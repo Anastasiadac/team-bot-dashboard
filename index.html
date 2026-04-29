@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Аналитика переписок · Команда Вани Замесина</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --navy: #0f172a; --dark: #1e293b; --gray: #64748b;
+    --border: #e2e8f0; --light: #f8fafc; --white: #ffffff;
+    --green: #10b981; --green-d: #059669; --green-l: #ecfdf5; --green-m: #d1fae5;
+    --blue: #3b82f6; --blue-l: #eff6ff;
+    --amber: #f59e0b; --amber-l: #fffbeb;
+    --red: #ef4444; --red-l: #fef2f2;
+    --purple: #8b5cf6; --purple-l: #f5f3ff;
+    --orange: #f97316;
+  }
+  body { font-family: 'Inter', -apple-system, sans-serif; background: #f5f0e8; color: var(--navy); line-height: 1.5; }
+  .page { max-width: 900px; margin: 0 auto; padding: 24px 24px 80px; }
+
+  /* ── Селектор недели ── */
+  .week-selector {
+    position: sticky; top: 0; z-index: 50;
+    background: rgba(245, 240, 232, 0.92);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    margin: -24px -24px 24px;
+    padding: 14px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 16px; flex-wrap: wrap;
+  }
+  .week-selector label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--gray); }
+  .week-selector select {
+    font-family: inherit; font-size: 14px; font-weight: 600;
+    padding: 8px 14px; border-radius: 10px; border: 1px solid var(--border);
+    background: #fff; color: var(--navy); cursor: pointer;
+    min-width: 220px;
+  }
+  .week-selector .vs { font-size: 12px; color: var(--gray); }
+  .week-selector .vs strong { color: var(--navy); }
+  .small-data { font-size: 11px; color: var(--amber); margin-left: auto; }
+
+  /* ── Hero ── */
+  .hero {
+    background: linear-gradient(135deg, #064e3b 0%, #065f46 50%, #047857 100%);
+    border-radius: 24px; padding: 52px 48px 44px;
+    margin-bottom: 28px; position: relative; overflow: hidden;
+  }
+  .hero::before {
+    content: ''; position: absolute; top: -80px; right: -80px;
+    width: 300px; height: 300px;
+    background: radial-gradient(circle, rgba(16,185,129,0.3) 0%, transparent 70%);
+    border-radius: 50%;
+  }
+  .hero::after {
+    content: ''; position: absolute; bottom: -60px; left: 20%;
+    width: 220px; height: 220px;
+    background: radial-gradient(circle, rgba(52,211,153,0.15) 0%, transparent 70%);
+    border-radius: 50%;
+  }
+  .hero-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: rgba(52,211,153,0.2); color: #6ee7b7;
+    font-size: 11px; font-weight: 700; letter-spacing: 0.06em;
+    text-transform: uppercase; padding: 6px 14px; border-radius: 100px;
+    margin-bottom: 20px; border: 1px solid rgba(52,211,153,0.3);
+  }
+  .hero h1 { font-size: 40px; font-weight: 900; color: #fff; line-height: 1.1; margin-bottom: 12px; position: relative; }
+  .hero h1 em { font-style: normal; color: #6ee7b7; }
+  .hero-sub { color: #a7f3d0; font-size: 15px; position: relative; margin-bottom: 36px; }
+
+  .win-strip { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; position: relative; }
+  .win-card { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.15); border-radius: 16px; padding: 18px 20px; backdrop-filter: blur(4px); }
+  .win-card .big { font-size: 32px; font-weight: 900; color: #fff; line-height: 1; margin-bottom: 2px; }
+  .win-card .big em { font-style: normal; color: #6ee7b7; font-size: 18px; font-weight: 700; margin-left: 4px; }
+  .win-card .lbl { font-size: 11px; color: #a7f3d0; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; }
+  .win-card .trend { display: inline-flex; align-items: center; gap: 4px; margin-top: 8px; font-size: 11px; font-weight: 700; color: #6ee7b7; background: rgba(52,211,153,0.15); padding: 3px 8px; border-radius: 100px; }
+
+  /* ── Section ── */
+  .section { margin-bottom: 24px; }
+  .section-title { display: flex; align-items: center; gap: 10px; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--gray); margin-bottom: 14px; }
+  .section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  /* ── Grid ── */
+  .grid { display: grid; gap: 14px; }
+  .grid-2 { grid-template-columns: 1fr 1fr; }
+  .grid-3 { grid-template-columns: 1fr 1fr 1fr; }
+
+  /* ── Improvement card ── */
+  .imp-card { background: var(--green-l); border: 1.5px solid var(--green-m); border-radius: 20px; padding: 24px 24px 20px; position: relative; overflow: hidden; }
+  .imp-card.warn { background: var(--amber-l); border-color: #fde68a; }
+  .imp-card::before { content: ''; position: absolute; top: -20px; right: -20px; width: 80px; height: 80px; background: radial-gradient(circle, rgba(16,185,129,0.15) 0%, transparent 70%); border-radius: 50%; }
+  .imp-card.warn::before { background: radial-gradient(circle, rgba(245,158,11,0.15) 0%, transparent 70%); }
+  .imp-icon { font-size: 28px; margin-bottom: 10px; display: block; }
+  .imp-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--green-d); margin-bottom: 6px; }
+  .imp-card.warn .imp-label { color: #92400e; }
+  .imp-value { font-size: 36px; font-weight: 900; color: #064e3b; line-height: 1; margin-bottom: 4px; }
+  .imp-card.warn .imp-value { color: #78350f; }
+  .imp-desc { font-size: 12px; color: #065f46; line-height: 1.4; }
+  .imp-card.warn .imp-desc { color: #92400e; }
+  .imp-badge { display: inline-flex; align-items: center; gap: 4px; margin-top: 10px; font-size: 12px; font-weight: 700; color: var(--green-d); background: var(--green-m); padding: 4px 10px; border-radius: 100px; }
+  .imp-card.warn .imp-badge { color: #92400e; background: #fde68a; }
+
+  /* ── Neutral card ── */
+  .card { background: var(--white); border: 1px solid var(--border); border-radius: 18px; padding: 20px 22px 18px; }
+  .card-icon { width: 34px; height: 34px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 17px; margin-bottom: 10px; }
+  .card-icon.green { background: var(--green-l); }
+  .card-icon.blue { background: var(--blue-l); }
+  .card-icon.purple { background: var(--purple-l); }
+  .card-icon.amber { background: var(--amber-l); }
+  .card-label { font-size: 11px; font-weight: 600; color: var(--gray); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 5px; }
+  .card-value { font-size: 28px; font-weight: 800; color: var(--navy); line-height: 1; margin-bottom: 3px; }
+  .card-desc { font-size: 12px; color: var(--gray); line-height: 1.4; }
+  .card-spark { margin-top: 10px; height: 28px; }
+
+  .badge { display: inline-flex; align-items: center; gap: 3px; font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 100px; margin-top: 8px; }
+  .badge.green { background: var(--green-l); color: var(--green-d); }
+  .badge.blue { background: var(--blue-l); color: #1d4ed8; }
+  .badge.amber { background: var(--amber-l); color: #92400e; }
+  .badge.red { background: var(--red-l); color: #991b1b; }
+  .badge.gray { background: var(--light); color: var(--gray); }
+
+  /* ── Load panel ── */
+  .load-panel { background: var(--white); border: 1px solid var(--border); border-radius: 18px; overflow: hidden; }
+  .load-header { background: var(--navy); padding: 14px 22px; display: flex; align-items: center; justify-content: space-between; }
+  .load-header span { font-size: 12px; font-weight: 700; color: #e2e8f0; text-transform: uppercase; letter-spacing: 0.05em; }
+  .load-row { display: grid; grid-template-columns: 1fr 80px 80px 1fr; align-items: center; padding: 12px 22px; border-bottom: 1px solid var(--border); gap: 12px; }
+  .load-row:last-child { border-bottom: none; }
+  .load-row:nth-child(odd) { background: var(--light); }
+  .lr-label { font-size: 13px; font-weight: 500; color: var(--dark); }
+  .lr-v { font-size: 14px; font-weight: 700; color: var(--navy); text-align: center; }
+  .lr-arrow { text-align: right; }
+
+  /* ── Topics ── */
+  .topics-list { background: var(--white); border: 1px solid var(--border); border-radius: 18px; overflow: hidden; }
+  .topic-row { display: grid; grid-template-columns: 1fr 70px 90px 80px; align-items: center; padding: 14px 20px; border-bottom: 1px solid var(--border); gap: 12px; }
+  .topic-row:last-child { border-bottom: none; }
+  .topic-row:nth-child(odd) { background: var(--light); }
+  .topic-label { font-size: 13px; font-weight: 600; color: var(--navy); }
+  .topic-share { font-size: 11px; color: var(--gray); margin-top: 2px; }
+  .topic-count { font-size: 14px; font-weight: 700; color: var(--navy); text-align: center; }
+  .topic-med { font-size: 13px; font-weight: 600; text-align: center; }
+  .topic-fast { font-size: 12px; color: var(--gray); text-align: right; }
+
+  /* ── Summary ── */
+  .summary { background: linear-gradient(135deg, #064e3b, #065f46); border-radius: 20px; padding: 32px 36px; color: #fff; }
+  .summary h2 { font-size: 20px; font-weight: 800; color: #6ee7b7; margin-bottom: 6px; }
+  .summary-sub { font-size: 13px; color: #a7f3d0; margin-bottom: 24px; }
+  .sum-row { display: flex; gap: 12px; align-items: flex-start; margin-bottom: 14px; }
+  .sum-row:last-of-type { margin-bottom: 0; }
+  .sum-ico { width: 30px; height: 30px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 15px; flex-shrink: 0; }
+  .sum-ico.g { background: rgba(52,211,153,0.2); }
+  .sum-ico.a { background: rgba(251,191,36,0.2); }
+  .sum-ico.r { background: rgba(239,68,68,0.2); }
+  .sum-text { font-size: 13px; color: #d1fae5; line-height: 1.5; }
+  .sum-text strong { color: #fff; }
+
+  /* ── Bar ── */
+  .bar-block { background: var(--white); border: 1px solid var(--border); border-radius: 18px; padding: 20px 22px; }
+  .bar-title { font-size: 13px; font-weight: 700; color: var(--navy); margin-bottom: 16px; }
+  .bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .bar-row:last-child { margin-bottom: 0; }
+  .bar-period { font-size: 11px; font-weight: 600; color: var(--gray); width: 78px; flex-shrink: 0; }
+  .bar-track { flex: 1; height: 10px; background: var(--border); border-radius: 100px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 100px; }
+  .bar-num { font-size: 12px; font-weight: 700; width: 60px; text-align: right; }
+  .bar-group { margin-bottom: 18px; }
+  .bar-group:last-child { margin-bottom: 0; }
+  .bar-group-label { font-size: 11px; color: var(--gray); margin-bottom: 8px; }
+  .bar-group-label strong { color: var(--navy); font-weight: 600; }
+
+  /* ── Footer ── */
+  .footer { text-align: center; font-size: 11px; color: var(--gray); margin-top: 36px; padding-top: 20px; border-top: 1px solid var(--border); }
+
+  @media (max-width: 640px) {
+    .grid-2, .grid-3 { grid-template-columns: 1fr; }
+    .win-strip { grid-template-columns: 1fr; }
+    .hero { padding: 32px 24px; }
+    .hero h1 { font-size: 28px; }
+    .load-row { grid-template-columns: 1fr 60px 60px 80px; padding: 10px 14px; }
+    .topic-row { grid-template-columns: 1fr 50px 70px; }
+    .topic-row .topic-fast { display: none; }
+    .week-selector { padding: 10px 16px; }
+    .week-selector select { min-width: 0; flex: 1; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- ── Селектор недели ── -->
+  <div class="week-selector">
+    <label for="week-select">Неделя:</label>
+    <select id="week-select"></select>
+    <span class="vs">vs <strong id="prev-week-label">—</strong></span>
+    <span class="small-data" id="small-data-warn" style="display:none">⚠ мало данных за неделю</span>
+  </div>
+
+  <!-- ── Hero ── -->
+  <div class="hero">
+    <div class="hero-badge" id="hero-badge">Динамика</div>
+    <h1 id="hero-h1">Неделя <em id="hero-h1-week">—</em></h1>
+    <p class="hero-sub" id="hero-sub">vs предыдущая неделя</p>
+
+    <div class="win-strip" id="win-strip"></div>
+  </div>
+
+  <!-- ── Скорость ── -->
+  <div class="section">
+    <div class="section-title">⚡ Скорость ответа · будни 10:00–19:00 · только рабочее время</div>
+
+    <div class="grid grid-2" style="margin-bottom:14px">
+      <div class="imp-card" id="speed-imp">
+        <span class="imp-icon">🚀</span>
+        <div class="imp-label" id="speed-imp-label">Длинных ожиданий</div>
+        <div class="imp-value" id="speed-imp-value">—</div>
+        <div class="imp-desc" id="speed-imp-desc">—</div>
+        <span class="imp-badge" id="speed-imp-badge">—</span>
+      </div>
+      <div style="display:grid;gap:14px">
+        <div class="card">
+          <div class="card-icon green">⏱</div>
+          <div class="card-label">Медиана ответа</div>
+          <div class="card-value" id="median-value">—</div>
+          <div class="card-desc" id="median-desc">—</div>
+          <span class="badge" id="median-badge">—</span>
+          <svg class="card-spark" data-spark="median_response_min" data-lower-better="true"></svg>
+        </div>
+        <div class="card">
+          <div class="card-icon green">🏆</div>
+          <div class="card-label">Ответили за 15 мин</div>
+          <div class="card-value" id="under15-value">—</div>
+          <div class="card-desc" id="under15-desc">—</div>
+          <span class="badge" id="under15-badge">—</span>
+          <svg class="card-spark" data-spark="share_under_15min" data-lower-better="false"></svg>
+        </div>
+      </div>
+    </div>
+
+    <div class="bar-block">
+      <div class="bar-title">Распределение времени ответа · перцентили</div>
+      <div class="bar-group">
+        <div class="bar-group-label"><strong>25-й перцентиль</strong> — быстрая четверть запросов</div>
+        <div class="bar-row">
+          <div class="bar-period" style="color:#64748b" id="prev-label-p25">пред.</div>
+          <div class="bar-track"><div class="bar-fill" id="prev-bar-p25" style="background:#94a3b8"></div></div>
+          <div class="bar-num" id="prev-num-p25" style="color:#64748b">—</div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-period" style="color:var(--green-d)" id="curr-label-p25">тек.</div>
+          <div class="bar-track"><div class="bar-fill" id="curr-bar-p25" style="background:var(--green)"></div></div>
+          <div class="bar-num" id="curr-num-p25" style="color:var(--green-d)">—</div>
+        </div>
+      </div>
+      <div class="bar-group">
+        <div class="bar-group-label"><strong>75-й перцентиль</strong> — за это время закрыты 75% обращений</div>
+        <div class="bar-row">
+          <div class="bar-period" style="color:#64748b" id="prev-label-p75">пред.</div>
+          <div class="bar-track"><div class="bar-fill" id="prev-bar-p75" style="background:#94a3b8"></div></div>
+          <div class="bar-num" id="prev-num-p75" style="color:#64748b">—</div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-period" style="color:var(--green-d)" id="curr-label-p75">тек.</div>
+          <div class="bar-track"><div class="bar-fill" id="curr-bar-p75" style="background:var(--green)"></div></div>
+          <div class="bar-num" id="curr-num-p75" style="color:var(--green-d)">—</div>
+        </div>
+      </div>
+      <div class="bar-group">
+        <div class="bar-group-label"><strong>95-й перцентиль</strong> — «хвост»: самые медленные 5%</div>
+        <div class="bar-row">
+          <div class="bar-period" style="color:#64748b" id="prev-label-p95">пред.</div>
+          <div class="bar-track"><div class="bar-fill" id="prev-bar-p95" style="background:#94a3b8"></div></div>
+          <div class="bar-num" id="prev-num-p95" style="color:#64748b">—</div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-period" style="color:var(--green-d)" id="curr-label-p95">тек.</div>
+          <div class="bar-track"><div class="bar-fill" id="curr-bar-p95" style="background:var(--green)"></div></div>
+          <div class="bar-num" id="curr-num-p95" style="color:var(--green-d)">—</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Качество ── -->
+  <div class="section">
+    <div class="section-title">💬 Качество общения</div>
+
+    <div class="grid grid-2" style="margin-bottom:14px">
+      <div class="imp-card" id="quality-imp">
+        <span class="imp-icon">💡</span>
+        <div class="imp-label" id="quality-imp-label">Короткие отписки на «?»</div>
+        <div class="imp-value" id="quality-imp-value">—</div>
+        <div class="imp-desc" id="quality-imp-desc">—</div>
+        <span class="imp-badge" id="quality-imp-badge">—</span>
+      </div>
+      <div style="display:grid;gap:14px">
+        <div class="card">
+          <div class="card-icon green">🌱</div>
+          <div class="card-label">NVC-фразы · теплота</div>
+          <div class="card-value" id="nvc-value">—</div>
+          <div class="card-desc" id="nvc-desc">—</div>
+          <span class="badge" id="nvc-badge">—</span>
+        </div>
+        <div class="card">
+          <div class="card-icon blue">📬</div>
+          <div class="card-label">Незакрытые диалоги</div>
+          <div class="card-value" id="unanswered-value">—</div>
+          <div class="card-desc" id="unanswered-desc">—</div>
+          <span class="badge" id="unanswered-badge">—</span>
+          <svg class="card-spark" data-spark="unanswered_share" data-lower-better="true"></svg>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid grid-2">
+      <div class="card">
+        <div class="card-icon amber">🔁</div>
+        <div class="card-label">Шаблонные ответы</div>
+        <div class="card-value" id="templates-value">—</div>
+        <div class="card-desc" id="templates-desc">—</div>
+        <span class="badge" id="templates-badge">—</span>
+      </div>
+      <div class="card" style="background:var(--green-l);border-color:var(--green-m)">
+        <div style="font-size:13px;font-weight:700;color:#064e3b;margin-bottom:10px">Как читать эти цифры</div>
+        <div style="font-size:12px;color:#065f46;line-height:1.6">
+          «Незакрытые» — это не игнор: диалоги, где клиент написал последним содержательное сообщение. «Спасибо» и «ок» отфильтрованы. «NVC-фразы» — маркеры живого общения вместо скриптов.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Тематики ── -->
+  <div class="section">
+    <div class="section-title">🏷️ Темы запросов · что спрашивают и как быстро отвечают</div>
+    <div class="topics-list" id="topics-list"></div>
+  </div>
+
+  <!-- ── Нагрузка ── -->
+  <div class="section">
+    <div class="section-title">📊 Нагрузка · среднее за рабочий день</div>
+    <div class="load-panel">
+      <div class="load-header">
+        <span>Показатель</span>
+        <div style="display:flex;gap:40px">
+          <span style="color:#94a3b8" id="load-prev-header">пред.</span>
+          <span style="color:#6ee7b7" id="load-curr-header">тек.</span>
+          <span style="width:80px;text-align:right">Δ</span>
+        </div>
+      </div>
+      <div class="load-row">
+        <div class="lr-label">Диалогов с клиентами</div>
+        <div class="lr-v" style="color:#64748b" id="load-prev-dialogs">—</div>
+        <div class="lr-v" id="load-curr-dialogs" style="color:var(--green-d);font-size:16px;font-weight:800">—</div>
+        <div class="lr-arrow"><span class="badge gray" id="load-delta-dialogs">—</span></div>
+      </div>
+      <div class="load-row">
+        <div class="lr-label">Сообщений от команды</div>
+        <div class="lr-v" style="color:#64748b" id="load-prev-msgs">—</div>
+        <div class="lr-v" id="load-curr-msgs" style="color:var(--navy);font-size:16px;font-weight:800">—</div>
+        <div class="lr-arrow"><span class="badge gray" id="load-delta-msgs">—</span></div>
+      </div>
+      <div class="load-row">
+        <div class="lr-label">Вопросов от клиентов (с «?»)</div>
+        <div class="lr-v" style="color:#64748b" id="load-prev-qs">—</div>
+        <div class="lr-v" id="load-curr-qs" style="color:var(--navy);font-size:16px;font-weight:800">—</div>
+        <div class="lr-arrow"><span class="badge gray" id="load-delta-qs">—</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Итог ── -->
+  <div class="summary">
+    <h2 id="summary-h2">Итог</h2>
+    <p class="summary-sub" id="summary-sub">—</p>
+    <div id="summary-rows"></div>
+  </div>
+
+  <div class="footer" id="footer">—</div>
+
+</div>
+
+<script id="weeks-data" type="application/json">{"weeks": [{"id": "2026-W06", "label": "2–8 фев 2026", "start": "2026-02-02", "end": "2026-02-08", "metrics": {"median_response_min": 5.9, "p25": 0.4, "p75": 39.5, "p95": 296.1, "share_under_15min": 0.6538, "share_over_2h": 0.1434, "n_pairs": 286, "short_dismiss_share": 0.0737, "templates_share": 0.0, "n_questions_with_qmark": 95, "n_out_messages": 273, "nvc_share": 0.0073, "nvc_count": 2, "unanswered_share": 0.314, "n_chats": 86, "n_unanswered": 27, "dialogs_per_day": 17.2, "messages_per_day": 54.6, "questions_per_day": 20.0, "n_dialogs": 86, "by_topic": [{"id": "payment", "label": "Оплата и биллинг", "count": 37, "median_response_min": 4.1, "share_under_15min": 0.6571, "share_over_2h": 0.1143, "share": 0.37}, {"id": "other", "label": "Другое", "count": 19, "median_response_min": 3.9, "share_under_15min": 0.7333, "share_over_2h": 0.0667, "share": 0.19}, {"id": "access", "label": "Доступ и логин", "count": 10, "median_response_min": 12.3, "share_under_15min": 0.6, "share_over_2h": 0.3, "share": 0.1}, {"id": "content", "label": "Контент и программа", "count": 10, "median_response_min": 20.5, "share_under_15min": 0.5, "share_over_2h": 0.2, "share": 0.1}, {"id": "schedule", "label": "Расписание и созвоны", "count": 9, "median_response_min": 32.7, "share_under_15min": 0.4444, "share_over_2h": 0.1111, "share": 0.09}, {"id": "documents", "label": "Документы", "count": 8, "median_response_min": 20.3, "share_under_15min": 0.4286, "share_over_2h": 0.2857, "share": 0.08}, {"id": "program_org", "label": "Организация обучения", "count": 7, "median_response_min": 0.0, "share_under_15min": 0.8571, "share_over_2h": 0.1429, "share": 0.07}]}, "n_messages_raw": 602, "n_messages_clean": 601}, {"id": "2026-W07", "label": "9–15 фев 2026", "start": "2026-02-09", "end": "2026-02-15", "metrics": {"median_response_min": 9.8, "p25": 0.6, "p75": 79.9, "p95": 313.4, "share_under_15min": 0.5704, "share_over_2h": 0.1408, "n_pairs": 277, "short_dismiss_share": 0.0729, "templates_share": 0.1575, "n_questions_with_qmark": 96, "n_out_messages": 273, "nvc_share": 0.0037, "nvc_count": 1, "unanswered_share": 0.4397, "n_chats": 116, "n_unanswered": 51, "dialogs_per_day": 23.2, "messages_per_day": 54.6, "questions_per_day": 21.2, "n_dialogs": 116, "by_topic": [{"id": "payment", "label": "Оплата и биллинг", "count": 28, "median_response_min": 14.5, "share_under_15min": 0.56, "share_over_2h": 0.24, "share": 0.2642}, {"id": "other", "label": "Другое", "count": 26, "median_response_min": 2.2, "share_under_15min": 0.6667, "share_over_2h": 0.125, "share": 0.2453}, {"id": "content", "label": "Контент и программа", "count": 18, "median_response_min": 4.4, "share_under_15min": 0.6923, "share_over_2h": 0.0769, "share": 0.1698}, {"id": "documents", "label": "Документы", "count": 16, "median_response_min": 3.0, "share_under_15min": 0.625, "share_over_2h": 0.125, "share": 0.1509}, {"id": "access", "label": "Доступ и логин", "count": 10, "median_response_min": 47.7, "share_under_15min": 0.5, "share_over_2h": 0.375, "share": 0.0943}, {"id": "schedule", "label": "Расписание и созвоны", "count": 4, "median_response_min": 15.7, "share_under_15min": 0.25, "share_over_2h": 0.0, "share": 0.0377}, {"id": "program_org", "label": "Организация обучения", "count": 4, "median_response_min": 29.2, "share_under_15min": 0.5, "share_over_2h": 0.0, "share": 0.0377}]}, "n_messages_raw": 629, "n_messages_clean": 625}, {"id": "2026-W08", "label": "16–22 фев 2026", "start": "2026-02-16", "end": "2026-02-22", "metrics": {"median_response_min": 5.2, "p25": 0.0, "p75": 40.2, "p95": 261.5, "share_under_15min": 0.6439, "share_over_2h": 0.1599, "n_pairs": 469, "short_dismiss_share": 0.0635, "templates_share": 0.0513, "n_questions_with_qmark": 126, "n_out_messages": 487, "nvc_share": 0.0021, "nvc_count": 1, "unanswered_share": 0.2974, "n_chats": 195, "n_unanswered": 58, "dialogs_per_day": 39.0, "messages_per_day": 97.4, "questions_per_day": 27.0, "n_dialogs": 195, "by_topic": [{"id": "payment", "label": "Оплата и биллинг", "count": 57, "median_response_min": 4.0, "share_under_15min": 0.6604, "share_over_2h": 0.1698, "share": 0.4222}, {"id": "other", "label": "Другое", "count": 27, "median_response_min": 6.0, "share_under_15min": 0.68, "share_over_2h": 0.08, "share": 0.2}, {"id": "access", "label": "Доступ и логин", "count": 15, "median_response_min": 2.0, "share_under_15min": 0.6154, "share_over_2h": 0.1538, "share": 0.1111}, {"id": "schedule", "label": "Расписание и созвоны", "count": 11, "median_response_min": 1.2, "share_under_15min": 0.8, "share_over_2h": 0.1, "share": 0.0815}, {"id": "content", "label": "Контент и программа", "count": 10, "median_response_min": 8.8, "share_under_15min": 0.6, "share_over_2h": 0.2, "share": 0.0741}, {"id": "documents", "label": "Документы", "count": 8, "median_response_min": 24.7, "share_under_15min": 0.25, "share_over_2h": 0.125, "share": 0.0593}, {"id": "program_org", "label": "Организация обучения", "count": 7, "median_response_min": 0.0, "share_under_15min": 0.7143, "share_over_2h": 0.0, "share": 0.0519}]}, "n_messages_raw": 1052, "n_messages_clean": 1050}, {"id": "2026-W09", "label": "23 фев – 1 мар 2026", "start": "2026-02-23", "end": "2026-03-01", "metrics": {"median_response_min": 5.4, "p25": 0.0, "p75": 43.9, "p95": 240.3, "share_under_15min": 0.6421, "share_over_2h": 0.1667, "n_pairs": 366, "short_dismiss_share": 0.1026, "templates_share": 0.1029, "n_questions_with_qmark": 117, "n_out_messages": 340, "nvc_share": 0.0, "nvc_count": 0, "unanswered_share": 0.413, "n_chats": 138, "n_unanswered": 57, "dialogs_per_day": 27.6, "messages_per_day": 68.0, "questions_per_day": 26.6, "n_dialogs": 138, "by_topic": [{"id": "payment", "label": "Оплата и биллинг", "count": 35, "median_response_min": 1.1, "share_under_15min": 0.7037, "share_over_2h": 0.1111, "share": 0.2632}, {"id": "other", "label": "Другое", "count": 29, "median_response_min": 4.7, "share_under_15min": 0.7857, "share_over_2h": 0.0357, "share": 0.218}, {"id": "content", "label": "Контент и программа", "count": 24, "median_response_min": 5.6, "share_under_15min": 0.7143, "share_over_2h": 0.1905, "share": 0.1805}, {"id": "access", "label": "Доступ и логин", "count": 15, "median_response_min": 6.8, "share_under_15min": 0.6154, "share_over_2h": 0.2308, "share": 0.1128}, {"id": "schedule", "label": "Расписание и созвоны", "count": 12, "median_response_min": 2.9, "share_under_15min": 0.9, "share_over_2h": 0.0, "share": 0.0902}, {"id": "documents", "label": "Документы", "count": 11, "median_response_min": 23.2, "share_under_15min": 0.4545, "share_over_2h": 0.1818, "share": 0.0827}, {"id": "program_org", "label": "Организация обучения", "count": 4, "median_response_min": 65.3, "share_under_15min": 0.5, "share_over_2h": 0.5, "share": 0.0301}, {"id": "tech", "label": "Техподдержка / баги", "count": 3, "median_response_min": 0.4, "share_under_15min": 1.0, "share_over_2h": 0.0, "share": 0.0226}]}, "n_messages_raw": 815, "n_messages_clean": 811}, {"id": "2026-W10", "label": "2–8 мар 2026", "start": "2026-03-02", "end": "2026-03-08", "metrics": {"median_response_min": 8.1, "p25": 0.0, "p75": 50.4, "p95": 539.0, "share_under_15min": 0.5611, "share_over_2h": 0.1601, "n_pairs": 606, "short_dismiss_share": 0.0888, "templates_share": 0.0369, "n_questions_with_qmark": 214, "n_out_messages": 515, "nvc_share": 0.0, "nvc_count": 0, "unanswered_share": 0.345, "n_chats": 171, "n_unanswered": 59, "dialogs_per_day": 34.2, "messages_per_day": 103.0, "questions_per_day": 47.0, "n_dialogs": 171, "by_topic": [{"id": "payment", "label": "Оплата и биллинг", "count": 93, "median_response_min": 15.1, "share_under_15min": 0.5, "share_over_2h": 0.1163, "share": 0.3957}, {"id": "content", "label": "Контент и программа", "count": 43, "median_response_min": 10.2, "share_under_15min": 0.5476, "share_over_2h": 0.1667, "share": 0.183}, {"id": "other", "label": "Другое", "count": 40, "median_response_min": 5.9, "share_under_15min": 0.6944, "share_over_2h": 0.0833, "share": 0.1702}, {"id": "access", "label": "Доступ и логин", "count": 18, "median_response_min": 0.7, "share_under_15min": 0.8462, "share_over_2h": 0.0769, "share": 0.0766}, {"id": "documents", "label": "Документы", "count": 15, "median_response_min": 26.6, "share_under_15min": 0.3333, "share_over_2h": 0.2, "share": 0.0638}, {"id": "schedule", "label": "Расписание и созвоны", "count": 9, "median_response_min": 1.9, "share_under_15min": 0.8571, "share_over_2h": 0.0, "share": 0.0383}, {"id": "program_org", "label": "Организация обучения", "count": 8, "median_response_min": 2.6, "share_under_15min": 0.8333, "share_over_2h": 0.0, "share": 0.034}, {"id": "tech", "label": "Техподдержка / баги", "count": 6, "median_response_min": 7.5, "share_under_15min": 0.6667, "share_over_2h": 0.1667, "share": 0.0255}, {"id": "hiring", "label": "Работа и найм", "count": 3, "median_response_min": 18.4, "share_under_15min": 0.3333, "share_over_2h": 0.0, "share": 0.0128}]}, "n_messages_raw": 1220, "n_messages_clean": 1215}, {"id": "2026-W11", "label": "9–15 мар 2026", "start": "2026-03-09", "end": "2026-03-15", "metrics": {"median_response_min": 6.5, "p25": 0.0, "p75": 84.6, "p95": 406.7, "share_under_15min": 0.6196, "share_over_2h": 0.2259, "n_pairs": 602, "short_dismiss_share": 0.1038, "templates_share": 0.0311, "n_questions_with_qmark": 212, "n_out_messages": 546, "nvc_share": 0.0037, "nvc_count": 2, "unanswered_share": 0.3571, "n_chats": 196, "n_unanswered": 70, "dialogs_per_day": 39.2, "messages_per_day": 109.2, "questions_per_day": 47.0, "n_dialogs": 196, "by_topic": [{"id": "payment", "label": "Оплата и биллинг", "count": 82, "median_response_min": 7.2, "share_under_15min": 0.589, "share_over_2h": 0.2466, "share": 0.3489}, {"id": "other", "label": "Другое", "count": 52, "median_response_min": 2.9, "share_under_15min": 0.6957, "share_over_2h": 0.1522, "share": 0.2213}, {"id": "content", "label": "Контент и программа", "count": 33, "median_response_min": 5.5, "share_under_15min": 0.6875, "share_over_2h": 0.2188, "share": 0.1404}, {"id": "documents", "label": "Документы", "count": 18, "median_response_min": 32.3, "share_under_15min": 0.4667, "share_over_2h": 0.3333, "share": 0.0766}, {"id": "access", "label": "Доступ и логин", "count": 16, "median_response_min": 0.2, "share_under_15min": 0.8571, "share_over_2h": 0.1429, "share": 0.0681}, {"id": "schedule", "label": "Расписание и созвоны", "count": 15, "median_response_min": 1.3, "share_under_15min": 0.8, "share_over_2h": 0.0667, "share": 0.0638}, {"id": "program_org", "label": "Организация обучения", "count": 14, "median_response_min": 0.0, "share_under_15min": 0.8333, "share_over_2h": 0.0833, "share": 0.0596}, {"id": "tech", "label": "Техподдержка / баги", "count": 5, "median_response_min": 0.5, "share_under_15min": 1.0, "share_over_2h": 0.0, "share": 0.0213}]}, "n_messages_raw": 1274, "n_messages_clean": 1268}, {"id": "2026-W12", "label": "16–22 мар 2026", "start": "2026-03-16", "end": "2026-03-22", "metrics": {"median_response_min": 5.9, "p25": 0.0, "p75": 30.4, "p95": 312.2, "share_under_15min": 0.6381, "share_over_2h": 0.1325, "n_pairs": 898, "short_dismiss_share": 0.1053, "templates_share": 0.0249, "n_questions_with_qmark": 323, "n_out_messages": 842, "nvc_share": 0.0024, "nvc_count": 2, "unanswered_share": 0.3497, "n_chats": 286, "n_unanswered": 100, "dialogs_per_day": 57.2, "messages_per_day": 168.4, "questions_per_day": 69.0, "n_dialogs": 286, "by_topic": [{"id": "payment", "label": "Оплата и биллинг", "count": 92, "median_response_min": 12.7, "share_under_15min": 0.5357, "share_over_2h": 0.1429, "share": 0.2667}, {"id": "content", "label": "Контент и программа", "count": 66, "median_response_min": 8.7, "share_under_15min": 0.5968, "share_over_2h": 0.1613, "share": 0.1913}, {"id": "other", "label": "Другое", "count": 59, "median_response_min": 3.4, "share_under_15min": 0.7636, "share_over_2h": 0.0545, "share": 0.171}, {"id": "documents", "label": "Документы", "count": 44, "median_response_min": 6.3, "share_under_15min": 0.6744, "share_over_2h": 0.0698, "share": 0.1275}, {"id": "schedule", "label": "Расписание и созвоны", "count": 30, "median_response_min": 5.2, "share_under_15min": 0.6667, "share_over_2h": 0.0667, "share": 0.087}, {"id": "access", "label": "Доступ и логин", "count": 28, "median_response_min": 2.3, "share_under_15min": 0.68, "share_over_2h": 0.08, "share": 0.0812}, {"id": "program_org", "label": "Организация обучения", "count": 22, "median_response_min": 9.8, "share_under_15min": 0.7, "share_over_2h": 0.05, "share": 0.0638}, {"id": "tech", "label": "Техподдержка / баги", "count": 4, "median_response_min": 0.0, "share_under_15min": 1.0, "share_over_2h": 0.0, "share": 0.0116}]}, "n_messages_raw": 1910, "n_messages_clean": 1899}, {"id": "2026-W13", "label": "23–29 мар 2026", "start": "2026-03-23", "end": "2026-03-29", "metrics": {"median_response_min": 2.8, "p25": 0.0, "p75": 30.2, "p95": 220.4, "share_under_15min": 0.6739, "share_over_2h": 0.121, "n_pairs": 926, "short_dismiss_share": 0.0483, "templates_share": 0.0, "n_questions_with_qmark": 290, "n_out_messages": 798, "nvc_share": 0.005, "nvc_count": 4, "unanswered_share": 0.2819, "n_chats": 227, "n_unanswered": 64, "dialogs_per_day": 45.4, "messages_per_day": 159.6, "questions_per_day": 61.4, "n_dialogs": 227, "by_topic": [{"id": "payment", "label": "Оплата и биллинг", "count": 91, "median_response_min": 4.7, "share_under_15min": 0.6163, "share_over_2h": 0.1163, "share": 0.2964}, {"id": "other", "label": "Другое", "count": 66, "median_response_min": 0.9, "share_under_15min": 0.7778, "share_over_2h": 0.0952, "share": 0.215}, {"id": "content", "label": "Контент и программа", "count": 54, "median_response_min": 4.3, "share_under_15min": 0.6078, "share_over_2h": 0.1569, "share": 0.1759}, {"id": "access", "label": "Доступ и логин", "count": 29, "median_response_min": 5.1, "share_under_15min": 0.6154, "share_over_2h": 0.1538, "share": 0.0945}, {"id": "documents", "label": "Документы", "count": 22, "median_response_min": 6.7, "share_under_15min": 0.6667, "share_over_2h": 0.1429, "share": 0.0717}, {"id": "schedule", "label": "Расписание и созвоны", "count": 22, "median_response_min": 0.1, "share_under_15min": 0.7619, "share_over_2h": 0.0476, "share": 0.0717}, {"id": "program_org", "label": "Организация обучения", "count": 17, "median_response_min": 0.7, "share_under_15min": 0.75, "share_over_2h": 0.0, "share": 0.0554}, {"id": "tech", "label": "Техподдержка / баги", "count": 6, "median_response_min": 0.0, "share_under_15min": 0.8333, "share_over_2h": 0.0, "share": 0.0195}]}, "n_messages_raw": 1820, "n_messages_clean": 1817}, {"id": "2026-W14", "label": "30 мар – 5 апр 2026", "start": "2026-03-30", "end": "2026-04-05", "metrics": {"median_response_min": 5.5, "p25": 0.0, "p75": 58.8, "p95": 319.3, "share_under_15min": 0.6029, "share_over_2h": 0.1738, "n_pairs": 748, "short_dismiss_share": 0.0423, "templates_share": 0.0146, "n_questions_with_qmark": 260, "n_out_messages": 615, "nvc_share": 0.0049, "nvc_count": 3, "unanswered_share": 0.3089, "n_chats": 191, "n_unanswered": 59, "dialogs_per_day": 38.4, "messages_per_day": 123.0, "questions_per_day": 55.0, "n_dialogs": 192, "by_topic": [{"id": "payment", "label": "Оплата и биллинг", "count": 73, "median_response_min": 15.9, "share_under_15min": 0.5, "share_over_2h": 0.2429, "share": 0.2655}, {"id": "other", "label": "Другое", "count": 55, "median_response_min": 3.6, "share_under_15min": 0.7358, "share_over_2h": 0.0943, "share": 0.2}, {"id": "content", "label": "Контент и программа", "count": 43, "median_response_min": 8.6, "share_under_15min": 0.5897, "share_over_2h": 0.1538, "share": 0.1564}, {"id": "program_org", "label": "Организация обучения", "count": 27, "median_response_min": 3.5, "share_under_15min": 0.68, "share_over_2h": 0.12, "share": 0.0982}, {"id": "documents", "label": "Документы", "count": 25, "median_response_min": 9.0, "share_under_15min": 0.7391, "share_over_2h": 0.087, "share": 0.0909}, {"id": "schedule", "label": "Расписание и созвоны", "count": 24, "median_response_min": 5.2, "share_under_15min": 0.5417, "share_over_2h": 0.1667, "share": 0.0873}, {"id": "access", "label": "Доступ и логин", "count": 21, "median_response_min": 6.0, "share_under_15min": 0.75, "share_over_2h": 0.05, "share": 0.0764}, {"id": "tech", "label": "Техподдержка / баги", "count": 4, "median_response_min": 0.0, "share_under_15min": 1.0, "share_over_2h": 0.0, "share": 0.0145}, {"id": "hiring", "label": "Работа и найм", "count": 3, "median_response_min": 219.1, "share_under_15min": 0.5, "share_over_2h": 0.5, "share": 0.0109}]}, "n_messages_raw": 1467, "n_messages_clean": 1462}, {"id": "2026-W15", "label": "6–12 апр 2026", "start": "2026-04-06", "end": "2026-04-12", "metrics": {"median_response_min": 42.3, "p25": 0.0, "p75": 122.5, "p95": 436.0, "share_under_15min": 0.407, "share_over_2h": 0.2616, "n_pairs": 344, "short_dismiss_share": 0.0299, "templates_share": 0.0249, "n_questions_with_qmark": 134, "n_out_messages": 281, "nvc_share": 0.0, "nvc_count": 0, "unanswered_share": 0.4236, "n_chats": 144, "n_unanswered": 61, "dialogs_per_day": 28.8, "messages_per_day": 56.2, "questions_per_day": 30.0, "n_dialogs": 144, "by_topic": [{"id": "payment", "label": "Оплата и биллинг", "count": 55, "median_response_min": 86.7, "share_under_15min": 0.3077, "share_over_2h": 0.3269, "share": 0.3667}, {"id": "content", "label": "Контент и программа", "count": 25, "median_response_min": 77.8, "share_under_15min": 0.3, "share_over_2h": 0.3, "share": 0.1667}, {"id": "other", "label": "Другое", "count": 22, "median_response_min": 17.4, "share_under_15min": 0.4706, "share_over_2h": 0.1176, "share": 0.1467}, {"id": "documents", "label": "Документы", "count": 14, "median_response_min": 126.6, "share_under_15min": 0.2727, "share_over_2h": 0.5455, "share": 0.0933}, {"id": "access", "label": "Доступ и логин", "count": 13, "median_response_min": 89.1, "share_under_15min": 0.3077, "share_over_2h": 0.2308, "share": 0.0867}, {"id": "program_org", "label": "Организация обучения", "count": 11, "median_response_min": 44.6, "share_under_15min": 0.2727, "share_over_2h": 0.2727, "share": 0.0733}, {"id": "schedule", "label": "Расписание и созвоны", "count": 7, "median_response_min": 3.8, "share_under_15min": 0.5714, "share_over_2h": 0.2857, "share": 0.0467}, {"id": "tech", "label": "Техподдержка / баги", "count": 3, "median_response_min": 475.8, "share_under_15min": 0.5, "share_over_2h": 0.5, "share": 0.02}]}, "n_messages_raw": 710, "n_messages_clean": 707}, {"id": "2026-W16", "label": "13–19 апр 2026", "start": "2026-04-13", "end": "2026-04-19", "metrics": {"median_response_min": 4.8, "p25": 0.0, "p75": 51.8, "p95": 335.8, "share_under_15min": 0.6287, "share_over_2h": 0.1786, "n_pairs": 571, "short_dismiss_share": 0.0323, "templates_share": 0.0489, "n_questions_with_qmark": 186, "n_out_messages": 491, "nvc_share": 0.002, "nvc_count": 1, "unanswered_share": 0.3492, "n_chats": 189, "n_unanswered": 66, "dialogs_per_day": 37.8, "messages_per_day": 98.2, "questions_per_day": 41.2, "n_dialogs": 189, "by_topic": [{"id": "payment", "label": "Оплата и биллинг", "count": 59, "median_response_min": 0.3, "share_under_15min": 0.6481, "share_over_2h": 0.2222, "share": 0.2864}, {"id": "content", "label": "Контент и программа", "count": 39, "median_response_min": 32.0, "share_under_15min": 0.3939, "share_over_2h": 0.2424, "share": 0.1893}, {"id": "other", "label": "Другое", "count": 35, "median_response_min": 0.0, "share_under_15min": 0.7812, "share_over_2h": 0.0625, "share": 0.1699}, {"id": "access", "label": "Доступ и логин", "count": 25, "median_response_min": 12.7, "share_under_15min": 0.5238, "share_over_2h": 0.3333, "share": 0.1214}, {"id": "schedule", "label": "Расписание и созвоны", "count": 17, "median_response_min": 1.4, "share_under_15min": 0.6875, "share_over_2h": 0.1875, "share": 0.0825}, {"id": "program_org", "label": "Организация обучения", "count": 16, "median_response_min": 31.3, "share_under_15min": 0.4, "share_over_2h": 0.1333, "share": 0.0777}, {"id": "documents", "label": "Документы", "count": 10, "median_response_min": 9.4, "share_under_15min": 0.5556, "share_over_2h": 0.0, "share": 0.0485}, {"id": "tech", "label": "Техподдержка / баги", "count": 5, "median_response_min": 32.8, "share_under_15min": 0.4, "share_over_2h": 0.2, "share": 0.0243}]}, "n_messages_raw": 1169, "n_messages_clean": 1165}, {"id": "2026-W17", "label": "20–26 апр 2026", "start": "2026-04-20", "end": "2026-04-26", "metrics": {"median_response_min": 14.6, "p25": 1.1, "p75": 74.6, "p95": 207.4, "share_under_15min": 0.5126, "share_over_2h": 0.1597, "n_pairs": 119, "short_dismiss_share": 0.0294, "templates_share": 0.0, "n_questions_with_qmark": 34, "n_out_messages": 115, "nvc_share": 0.0, "nvc_count": 0, "unanswered_share": 0.4242, "n_chats": 66, "n_unanswered": 28, "dialogs_per_day": 13.2, "messages_per_day": 23.0, "questions_per_day": 9.8, "n_dialogs": 66, "by_topic": [{"id": "payment", "label": "Оплата и биллинг", "count": 11, "median_response_min": 12.8, "share_under_15min": 0.5, "share_over_2h": 0.2, "share": 0.2245}, {"id": "access", "label": "Доступ и логин", "count": 10, "median_response_min": 0.2, "share_under_15min": 0.6667, "share_over_2h": 0.1111, "share": 0.2041}, {"id": "content", "label": "Контент и программа", "count": 7, "median_response_min": 134.7, "share_under_15min": 0.0, "share_over_2h": 0.5, "share": 0.1429}, {"id": "other", "label": "Другое", "count": 7, "median_response_min": 92.1, "share_under_15min": 0.3333, "share_over_2h": 0.3333, "share": 0.1429}, {"id": "documents", "label": "Документы", "count": 7, "median_response_min": 15.4, "share_under_15min": 0.4, "share_over_2h": 0.0, "share": 0.1429}, {"id": "hiring", "label": "Работа и найм", "count": 4, "median_response_min": 60.5, "share_under_15min": 0.0, "share_over_2h": 0.0, "share": 0.0816}, {"id": "schedule", "label": "Расписание и созвоны", "count": 3, "median_response_min": 110.8, "share_under_15min": 0.5, "share_over_2h": 0.5, "share": 0.0612}]}, "n_messages_raw": 278, "n_messages_clean": 276}], "default_week": "2026-W17", "generated_at": "2026-04-29T09:28:11.561043+03:00"}</script>
+<script>
+(function () {
+  const RAW = JSON.parse(document.getElementById('weeks-data').textContent);
+  const WEEKS = RAW.weeks;
+  const BY_ID = Object.fromEntries(WEEKS.map(w => [w.id, w]));
+
+  // metric → lower_better (true: меньше лучше; false: больше лучше; null: нейтрально)
+  const LOWER_BETTER = {
+    median_response_min: true,
+    p25: true, p75: true, p95: true,
+    share_under_15min: false,
+    share_over_2h: true,
+    short_dismiss_share: true,
+    templates_share: true,
+    nvc_share: false,
+    unanswered_share: true,
+    dialogs_per_day: null,
+    messages_per_day: null,
+    questions_per_day: null,
+  };
+
+  const LOW_DATA_THRESHOLD = 50; // n_pairs < этого → плашка "мало данных"
+
+  // ── helpers ──
+  function fmtMin(v) {
+    if (v == null) return '—';
+    if (v >= 60) {
+      const h = Math.floor(v / 60), m = Math.round(v - h * 60);
+      return m ? `${h} ч ${m} мин` : `${h} ч`;
+    }
+    return `${(+v).toFixed(1).replace(/\.0$/, '')} мин`;
+  }
+  function fmtPct(v, digits=1) {
+    if (v == null) return '—';
+    return `${(v * 100).toFixed(digits).replace(/\.0$/, '')}%`;
+  }
+  function fmtNum(v, digits=1) {
+    if (v == null) return '—';
+    return (+v).toFixed(digits).replace(/\.0$/, '');
+  }
+  function deltaPP(curr, prev) {
+    if (curr == null || prev == null) return null;
+    return (curr - prev) * 100;
+  }
+  function deltaAbs(curr, prev) {
+    if (curr == null || prev == null) return null;
+    return curr - prev;
+  }
+  function deltaRatio(curr, prev) {
+    if (curr == null || prev == null || prev === 0) return null;
+    return curr / prev;
+  }
+  function direction(curr, prev, key) {
+    const lb = LOWER_BETTER[key];
+    if (lb === null || lb === undefined) return 'gray';
+    if (curr == null || prev == null) return 'gray';
+    if (curr === prev) return 'gray';
+    const isImproved = lb ? (curr < prev) : (curr > prev);
+    return isImproved ? 'green' : 'amber';
+  }
+  function arrow(curr, prev, key) {
+    if (curr == null || prev == null || curr === prev) return '◆';
+    const lb = LOWER_BETTER[key];
+    const isUp = curr > prev;
+    return isUp ? '▲' : '▼';
+  }
+  function findPrev(weekIdx) {
+    return weekIdx > 0 ? WEEKS[weekIdx - 1] : null;
+  }
+  function getMetricSeries(key, last_n=8) {
+    return WEEKS.slice(-last_n).map(w => w.metrics[key]);
+  }
+
+  // ── sparklines ──
+  function drawSparkline(svg, values, lowerBetter) {
+    const W = svg.clientWidth || 200;
+    const H = 28;
+    svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+    svg.setAttribute('width', W);
+    svg.setAttribute('height', H);
+    svg.innerHTML = '';
+    const valid = values.map(v => v == null ? null : +v);
+    const nums = valid.filter(v => v != null);
+    if (nums.length < 2) return;
+    const min = Math.min(...nums), max = Math.max(...nums);
+    const range = max - min || 1;
+    const stepX = W / (valid.length - 1);
+    const padding = 2;
+    const usableH = H - padding * 2;
+    const points = valid.map((v, i) => {
+      if (v == null) return null;
+      const x = i * stepX;
+      const y = padding + usableH - ((v - min) / range) * usableH;
+      return [x, y];
+    });
+    const pathPoints = points.filter(p => p != null);
+    if (pathPoints.length < 2) return;
+    const d = pathPoints.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join(' ');
+    const ns = 'http://www.w3.org/2000/svg';
+    const path = document.createElementNS(ns, 'path');
+    const last = valid[valid.length - 1], prev = valid[valid.length - 2];
+    const dirIsGood = (last != null && prev != null) ? (lowerBetter ? last < prev : last > prev) : null;
+    const colour = dirIsGood == null ? '#94a3b8' : (dirIsGood ? '#10b981' : '#f59e0b');
+    path.setAttribute('d', d);
+    path.setAttribute('fill', 'none');
+    path.setAttribute('stroke', colour);
+    path.setAttribute('stroke-width', '1.5');
+    path.setAttribute('stroke-linecap', 'round');
+    path.setAttribute('stroke-linejoin', 'round');
+    svg.appendChild(path);
+    const lastPt = points[points.length - 1];
+    if (lastPt) {
+      const c = document.createElementNS(ns, 'circle');
+      c.setAttribute('cx', lastPt[0]);
+      c.setAttribute('cy', lastPt[1]);
+      c.setAttribute('r', '2.5');
+      c.setAttribute('fill', colour);
+      svg.appendChild(c);
+    }
+  }
+
+  // ── rendering ──
+  function setText(id, text) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = text;
+  }
+  function setBadge(id, text, kind) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = text;
+    el.className = 'badge ' + kind;
+  }
+
+  function describeBadgePP(curr, prev, key, fmt='pp') {
+    const dpp = deltaPP(curr, prev);
+    if (dpp == null) return { text: '—', kind: 'gray' };
+    if (Math.abs(dpp) < 0.05) return { text: '◆ без изменений', kind: 'gray' };
+    const dir = arrow(curr, prev, key);
+    const sign = dpp > 0 ? '+' : '−';
+    const txt = `${dir} ${sign}${Math.abs(dpp).toFixed(1)}пп`;
+    return { text: txt, kind: direction(curr, prev, key) };
+  }
+  function describeBadgeAbs(curr, prev, key, unit='') {
+    const d = deltaAbs(curr, prev);
+    if (d == null) return { text: '—', kind: 'gray' };
+    if (Math.abs(d) < 0.05) return { text: '◆ без изменений', kind: 'gray' };
+    const dir = arrow(curr, prev, key);
+    const sign = d > 0 ? '+' : '−';
+    const txt = `${dir} ${sign}${Math.abs(d).toFixed(1)}${unit}`;
+    return { text: txt, kind: direction(curr, prev, key) };
+  }
+
+  // win-strip: подбираем 3 интересных метрики с большой дельтой
+  function renderWins(curr, prev) {
+    const candidates = [
+      { key: 'median_response_min', label: 'Медиана ответа', curr: curr.metrics.median_response_min, prev: prev?.metrics.median_response_min, fmt: 'min' },
+      { key: 'share_over_2h', label: 'Долгих ожиданий >2ч', curr: curr.metrics.share_over_2h, prev: prev?.metrics.share_over_2h, fmt: 'pct' },
+      { key: 'share_under_15min', label: 'Ответ за 15 мин', curr: curr.metrics.share_under_15min, prev: prev?.metrics.share_under_15min, fmt: 'pct' },
+      { key: 'short_dismiss_share', label: 'Кратких отписок', curr: curr.metrics.short_dismiss_share, prev: prev?.metrics.short_dismiss_share, fmt: 'pct' },
+      { key: 'unanswered_share', label: 'Незакрытых', curr: curr.metrics.unanswered_share, prev: prev?.metrics.unanswered_share, fmt: 'pct' },
+      { key: 'dialogs_per_day', label: 'Диалогов/день', curr: curr.metrics.dialogs_per_day, prev: prev?.metrics.dialogs_per_day, fmt: 'num' },
+    ];
+
+    const scored = candidates
+      .filter(c => c.curr != null && c.prev != null)
+      .map(c => {
+        const dir = direction(c.curr, c.prev, c.key);
+        const dpp = c.fmt === 'pct' ? deltaPP(c.curr, c.prev) : deltaAbs(c.curr, c.prev);
+        return { ...c, dir, magnitude: Math.abs(dpp ?? 0) };
+      })
+      .sort((a, b) => b.magnitude - a.magnitude)
+      .slice(0, 3);
+
+    const strip = document.getElementById('win-strip');
+    strip.innerHTML = '';
+    if (scored.length === 0) {
+      strip.innerHTML = '<div class="win-card" style="grid-column:1/-1"><div class="lbl">Недостаточно данных для сравнения с предыдущей неделей</div></div>';
+      return;
+    }
+    scored.forEach(c => {
+      const dpp = c.fmt === 'pct' ? deltaPP(c.curr, c.prev) : deltaAbs(c.curr, c.prev);
+      const sign = dpp > 0 ? '+' : '−';
+      const main = c.fmt === 'pct'
+        ? `${sign}${Math.abs(dpp).toFixed(1)}`
+        : (c.fmt === 'min' ? `${sign}${Math.abs(dpp).toFixed(1)}` : `${sign}${Math.abs(dpp).toFixed(1)}`);
+      const unit = c.fmt === 'pct' ? 'пп' : (c.fmt === 'min' ? 'мин' : '');
+      const arr = arrow(c.curr, c.prev, c.key);
+      const trend = c.fmt === 'pct'
+        ? `${arr} ${fmtPct(c.prev)} → ${fmtPct(c.curr)}`
+        : (c.fmt === 'min'
+          ? `${arr} ${fmtMin(c.prev)} → ${fmtMin(c.curr)}`
+          : `${arr} ${fmtNum(c.prev)} → ${fmtNum(c.curr)}`);
+      const div = document.createElement('div');
+      div.className = 'win-card';
+      div.innerHTML = `
+        <div class="big">${main}<em>${unit}</em></div>
+        <div class="lbl">${c.label}</div>
+        <div class="trend">${trend}</div>
+      `;
+      strip.appendChild(div);
+    });
+  }
+
+  function renderImpSpeed(curr, prev) {
+    const c = curr.metrics.share_over_2h;
+    const p = prev ? prev.metrics.share_over_2h : null;
+    const card = document.getElementById('speed-imp');
+    card.classList.remove('warn');
+    setText('speed-imp-label', 'Ответы дольше 2 рабочих часов');
+    setText('speed-imp-value', fmtPct(c));
+    setText('speed-imp-desc', p != null ? `было ${fmtPct(p)}` : 'нет предыдущих данных');
+    const b = describeBadgePP(c, p, 'share_over_2h');
+    setText('speed-imp-badge', b.text);
+    if (b.kind === 'amber') card.classList.add('warn');
+  }
+
+  function renderImpQuality(curr, prev) {
+    const c = curr.metrics.short_dismiss_share;
+    const p = prev ? prev.metrics.short_dismiss_share : null;
+    const card = document.getElementById('quality-imp');
+    card.classList.remove('warn');
+    setText('quality-imp-label', 'Короткие отписки на вопросы с «?»');
+    setText('quality-imp-value', fmtPct(c));
+    setText('quality-imp-desc', p != null ? `было ${fmtPct(p)}` : 'нет предыдущих данных');
+    const b = describeBadgePP(c, p, 'short_dismiss_share');
+    setText('quality-imp-badge', b.text);
+    if (b.kind === 'amber') card.classList.add('warn');
+  }
+
+  function renderTopics(curr) {
+    const list = document.getElementById('topics-list');
+    list.innerHTML = '';
+    const topics = curr.metrics.by_topic || [];
+    if (topics.length === 0) {
+      list.innerHTML = '<div style="padding:20px;text-align:center;color:#64748b;font-size:13px">Нет тематик за неделю</div>';
+      return;
+    }
+    topics.forEach(t => {
+      const fast = t.share_under_15min != null ? `${fmtPct(t.share_under_15min, 0)} за 15мин` : '';
+      const slow = t.share_over_2h != null && t.share_over_2h > 0 ? ` · ${fmtPct(t.share_over_2h, 0)} >2ч` : '';
+      const med = t.median_response_min != null ? fmtMin(t.median_response_min) : '—';
+      const row = document.createElement('div');
+      row.className = 'topic-row';
+      row.innerHTML = `
+        <div>
+          <div class="topic-label">${t.label}</div>
+          <div class="topic-share">${fmtPct(t.share, 0)} вопросов недели</div>
+        </div>
+        <div class="topic-count">${t.count}</div>
+        <div class="topic-med">${med}</div>
+        <div class="topic-fast">${fast}${slow}</div>
+      `;
+      list.appendChild(row);
+    });
+  }
+
+  function renderSummary(curr, prev) {
+    const sumRows = document.getElementById('summary-rows');
+    sumRows.innerHTML = '';
+    if (!prev) {
+      document.getElementById('summary-h2').textContent = 'Итог';
+      document.getElementById('summary-sub').textContent = 'Нет предыдущей недели для сравнения';
+      return;
+    }
+    const items = [
+      { key: 'share_over_2h', name: 'Доля ожиданий >2ч', fmt: 'pct', curr: curr.metrics.share_over_2h, prev: prev.metrics.share_over_2h },
+      { key: 'short_dismiss_share', name: 'Кратких отписок', fmt: 'pct', curr: curr.metrics.short_dismiss_share, prev: prev.metrics.short_dismiss_share },
+      { key: 'nvc_share', name: 'NVC-фраз', fmt: 'pct', curr: curr.metrics.nvc_share, prev: prev.metrics.nvc_share },
+      { key: 'unanswered_share', name: 'Незакрытых диалогов', fmt: 'pct', curr: curr.metrics.unanswered_share, prev: prev.metrics.unanswered_share },
+      { key: 'templates_share', name: 'Шаблонных ответов', fmt: 'pct', curr: curr.metrics.templates_share, prev: prev.metrics.templates_share },
+      { key: 'median_response_min', name: 'Медиана ответа', fmt: 'min', curr: curr.metrics.median_response_min, prev: prev.metrics.median_response_min },
+    ].filter(x => x.curr != null && x.prev != null);
+
+    const annotated = items.map(x => {
+      const dpp = x.fmt === 'pct' ? deltaPP(x.curr, x.prev) : deltaAbs(x.curr, x.prev);
+      return { ...x, dpp, kind: direction(x.curr, x.prev, x.key), abs: Math.abs(dpp ?? 0) };
+    }).sort((a, b) => b.abs - a.abs);
+
+    const greens = annotated.filter(a => a.kind === 'green').slice(0, 2);
+    const ambers = annotated.filter(a => a.kind === 'amber').slice(0, 1);
+    const picked = [...greens, ...ambers];
+
+    if (picked.length === 0) {
+      document.getElementById('summary-h2').textContent = 'Итог';
+      document.getElementById('summary-sub').textContent = 'Изменения незначительные';
+      return;
+    }
+
+    const niceCount = greens.length;
+    const heading = niceCount >= 2 ? 'Динамика положительная'
+                  : niceCount === 1 ? 'Есть улучшения и зоны роста'
+                  : 'Зоны роста — есть на что обратить внимание';
+    document.getElementById('summary-h2').textContent = `Итог: ${heading.toLowerCase()}`;
+    document.getElementById('summary-sub').textContent = `vs неделя ${prev.label}`;
+
+    picked.forEach(p => {
+      const isPct = p.fmt === 'pct';
+      const cur = isPct ? fmtPct(p.curr) : fmtMin(p.curr);
+      const pre = isPct ? fmtPct(p.prev) : fmtMin(p.prev);
+      const sign = p.dpp > 0 ? '+' : '−';
+      const deltaStr = isPct
+        ? `${sign}${Math.abs(p.dpp).toFixed(1)}пп`
+        : `${sign}${Math.abs(p.dpp).toFixed(1)} мин`;
+      const cls = p.kind === 'green' ? 'g' : 'a';
+      const ico = p.kind === 'green' ? '✓' : '👁';
+      const text = p.kind === 'green'
+        ? `<strong>${p.name} улучшилось.</strong> Было ${pre}, стало ${cur} (${deltaStr}).`
+        : `<strong>${p.name} — зона роста.</strong> Было ${pre}, стало ${cur} (${deltaStr}).`;
+      const row = document.createElement('div');
+      row.className = 'sum-row';
+      row.innerHTML = `<div class="sum-ico ${cls}">${ico}</div><div class="sum-text">${text}</div>`;
+      sumRows.appendChild(row);
+    });
+  }
+
+  function renderWeek(weekId) {
+    const idx = WEEKS.findIndex(w => w.id === weekId);
+    if (idx < 0) return;
+    const curr = WEEKS[idx];
+    const prev = findPrev(idx);
+
+    // hero
+    document.getElementById('hero-badge').textContent = `Неделя ${curr.id}`;
+    document.getElementById('hero-h1').innerHTML = `Неделя <em>${curr.label}</em>`;
+    document.getElementById('hero-sub').textContent = prev ? `vs ${prev.label}` : 'нет предыдущих недель для сравнения';
+    document.getElementById('prev-week-label').textContent = prev ? prev.label : '—';
+
+    // small data warn
+    const lowDataEl = document.getElementById('small-data-warn');
+    lowDataEl.style.display = (curr.metrics.n_pairs != null && curr.metrics.n_pairs < LOW_DATA_THRESHOLD) ? 'inline' : 'none';
+
+    renderWins(curr, prev);
+
+    // Скорость
+    renderImpSpeed(curr, prev);
+
+    setText('median-value', fmtMin(curr.metrics.median_response_min));
+    setText('median-desc', prev ? `было ${fmtMin(prev.metrics.median_response_min)}` : 'нет предыдущих данных');
+    const mb = describeBadgeAbs(curr.metrics.median_response_min, prev?.metrics.median_response_min, 'median_response_min', ' мин');
+    setBadge('median-badge', mb.text, mb.kind);
+
+    setText('under15-value', fmtPct(curr.metrics.share_under_15min));
+    setText('under15-desc', prev ? `было ${fmtPct(prev.metrics.share_under_15min)}` : 'нет предыдущих данных');
+    const ub = describeBadgePP(curr.metrics.share_under_15min, prev?.metrics.share_under_15min, 'share_under_15min');
+    setBadge('under15-badge', ub.text, ub.kind);
+
+    // Перцентили (бары)
+    function setBarRow(prefix, key) {
+      const cVal = curr.metrics[key];
+      const pVal = prev ? prev.metrics[key] : null;
+      const max = Math.max(cVal ?? 0, pVal ?? 0, 1);
+      setText(`prev-label-${prefix}`, prev ? prev.id : 'пред.');
+      setText(`curr-label-${prefix}`, curr.id);
+      setText(`prev-num-${prefix}`, pVal == null ? '—' : fmtMin(pVal));
+      setText(`curr-num-${prefix}`, cVal == null ? '—' : fmtMin(cVal));
+      const pBar = document.getElementById(`prev-bar-${prefix}`);
+      const cBar = document.getElementById(`curr-bar-${prefix}`);
+      if (pBar) pBar.style.width = `${Math.min((pVal ?? 0) / max * 100, 100)}%`;
+      if (cBar) cBar.style.width = `${Math.min((cVal ?? 0) / max * 100, 100)}%`;
+    }
+    setBarRow('p25', 'p25');
+    setBarRow('p75', 'p75');
+    setBarRow('p95', 'p95');
+
+    // Качество
+    renderImpQuality(curr, prev);
+
+    setText('nvc-value', fmtPct(curr.metrics.nvc_share, 2));
+    setText('nvc-desc', prev ? `было ${fmtPct(prev.metrics.nvc_share, 2)}` : 'нет предыдущих данных');
+    const nb = describeBadgePP(curr.metrics.nvc_share, prev?.metrics.nvc_share, 'nvc_share');
+    setBadge('nvc-badge', nb.text, nb.kind);
+
+    setText('unanswered-value', fmtPct(curr.metrics.unanswered_share));
+    setText('unanswered-desc', prev ? `было ${fmtPct(prev.metrics.unanswered_share)}` : 'нет предыдущих данных');
+    const unb = describeBadgePP(curr.metrics.unanswered_share, prev?.metrics.unanswered_share, 'unanswered_share');
+    setBadge('unanswered-badge', unb.text, unb.kind);
+
+    setText('templates-value', fmtPct(curr.metrics.templates_share));
+    setText('templates-desc', prev ? `было ${fmtPct(prev.metrics.templates_share)}` : 'нет предыдущих данных');
+    const tb = describeBadgePP(curr.metrics.templates_share, prev?.metrics.templates_share, 'templates_share');
+    setBadge('templates-badge', tb.text, tb.kind);
+
+    // Тематики
+    renderTopics(curr);
+
+    // Нагрузка
+    setText('load-prev-header', prev ? prev.id : 'пред.');
+    setText('load-curr-header', curr.id);
+
+    function loadRow(prefix, key, kind='num') {
+      const c = curr.metrics[key];
+      const p = prev ? prev.metrics[key] : null;
+      setText(`load-prev-${prefix}`, p == null ? '—' : fmtNum(p));
+      setText(`load-curr-${prefix}`, c == null ? '—' : fmtNum(c));
+      let badgeTxt, badgeKind;
+      if (c == null || p == null || p === 0) {
+        badgeTxt = '—'; badgeKind = 'gray';
+      } else {
+        const ratio = c / p;
+        const arr = c > p ? '▲' : (c < p ? '▼' : '◆');
+        const pct = ((ratio - 1) * 100);
+        badgeTxt = Math.abs(pct) < 5 ? '◆ ровно' : `${arr} ${pct > 0 ? '+' : ''}${pct.toFixed(0)}%`;
+        badgeKind = 'gray';
+      }
+      setBadge(`load-delta-${prefix}`, badgeTxt, badgeKind);
+    }
+    loadRow('dialogs', 'dialogs_per_day');
+    loadRow('msgs', 'messages_per_day');
+    loadRow('qs', 'questions_per_day');
+
+    // Спарклайны
+    document.querySelectorAll('svg[data-spark]').forEach(svg => {
+      const key = svg.getAttribute('data-spark');
+      const lb = svg.getAttribute('data-lower-better') === 'true';
+      drawSparkline(svg, getMetricSeries(key, 8), lb);
+    });
+
+    // Итог
+    renderSummary(curr, prev);
+
+    // Footer
+    const totalMsgs = WEEKS.reduce((s, w) => s + (w.n_messages_clean || 0), 0);
+    const totalChats = (curr.metrics.n_chats || 0);
+    document.getElementById('footer').textContent =
+      `Сгенерировано ${RAW.generated_at?.slice(0, 16).replace('T', ' ') || ''} · ${totalMsgs} сообщений в окне · ${totalChats} чатов на выбранной неделе`;
+
+    // URL
+    const url = new URL(window.location.href);
+    url.searchParams.set('week', curr.id);
+    history.replaceState({}, '', url);
+  }
+
+  function init() {
+    const sel = document.getElementById('week-select');
+    sel.innerHTML = '';
+    WEEKS.slice().reverse().forEach(w => {
+      const opt = document.createElement('option');
+      opt.value = w.id;
+      opt.textContent = `${w.id} · ${w.label}`;
+      sel.appendChild(opt);
+    });
+    const params = new URLSearchParams(window.location.search);
+    const startId = params.get('week') && BY_ID[params.get('week')]
+      ? params.get('week')
+      : RAW.default_week;
+    sel.value = startId;
+    sel.addEventListener('change', e => renderWeek(e.target.value));
+    renderWeek(startId);
+    window.addEventListener('resize', () => {
+      document.querySelectorAll('svg[data-spark]').forEach(svg => {
+        const key = svg.getAttribute('data-spark');
+        const lb = svg.getAttribute('data-lower-better') === 'true';
+        drawSparkline(svg, getMetricSeries(key, 8), lb);
+      });
+    });
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>
